@@ -13,8 +13,8 @@ A Next.js application with WebSocket support for real-time issue tracking.
 
 1. **Clone the repository:**
    ```bash
-   git clone <your-repo-url>
-   cd ittrackker
+   git clone https://github.com/chaiwatkang007/ittackerv1.git
+   cd ittackerv1
    ```
 
 2. **Run the application:**
@@ -26,91 +26,80 @@ A Next.js application with WebSocket support for real-time issue tracking.
 
 4. **Access the application:**
    - Web App: http://localhost:3000
-   - Database: localhost:5432
+   - Database: port 5432
 
 ### Play with Docker (PWD)
 
 1. **Go to [Play with Docker](https://labs.play-with-docker.com/)**
 
-2. **Start a new session**
+2. **Start a new session** Add New Instance
+   <img width="1919" height="952" alt="image" src="https://github.com/user-attachments/assets/f914b372-9daf-49c3-8b68-548f2b6fc6de" />
 
-3. **Upload your code** (zip or tar.gz)
 
-4. **Run the application:**
+4. git clone https://github.com/chaiwatkang007/ittackerv1.git
+   <img width="671" height="196" alt="image" src="https://github.com/user-attachments/assets/4be2cbed-b7aa-428b-ade6-bf65aee7a52e" />
+   
+   cd ittackerv1
+
+6. **Run Docker compose:**
    ```bash
-   docker-compose -f docker-compose.pwd.yml up --build
+   docker-compose up --build
    ```
 
-5. **Access the application** using the provided URL
+7. **Access the application** using the provided URL
+   <img width="1599" height="952" alt="image" src="https://github.com/user-attachments/assets/53df0a9e-4e3d-4043-a12b-998880c9cf54" />
+   click port 3000
+   <img width="1919" height="945" alt="image" src="https://github.com/user-attachments/assets/b14dce0d-2ce9-49c4-8ffa-ad5201a2904b" />
 
-## What happens during startup:
 
-1. PostgreSQL database starts up
-2. Web application builds (Next.js + Prisma)
-3. Prisma generates client and pushes schema
-4. Application starts on port 3000
-5. WebSocket automatically connects (local) or gracefully fails (PWD)
+# How to Register
+1.if Sing up on Web application role = user   
+2.create via /api/auth/register can fix role user support admin
+# Login
+Login via Web App with username & password
 
-## Environment Detection
+Login via API
+POST /api/auth/login
+{
+  "username": "admin",
+  "password": "admin"
+}
 
-The application automatically detects the environment:
+# 📡 WebSocket Connection Test
+Login to the web app
 
-- **Local Development**: Uses `http://localhost:3000` for WebSocket
-- **Play with Docker**: Uses relative path for WebSocket (may not work due to PWD restrictions)
+Press F12 → open Console
 
-## Troubleshooting
-
-### If build fails:
-- Ensure Docker has enough memory (at least 4GB recommended)
-- Clear Docker cache: `docker system prune -a`
-- Check Docker logs: `docker-compose logs web`
-
-### If database connection fails:
-- Wait for PostgreSQL to be ready (healthcheck will handle this)
-- Check database logs: `docker-compose logs postgres`
-
-### If Prisma fails:
-- The application will automatically retry Prisma commands
-- Check Prisma logs in the web container
-
-### If WebSocket doesn't work in PWD:
-- This is normal due to PWD network restrictions
-- The application will work without real-time features
-- All other functionality remains intact
-
-## Environment Variables
-
-All necessary environment variables are set in `docker-compose.yml`:
-- `DATABASE_URL`: PostgreSQL connection string
-- `JWT_SECRET`: Secret for JWT tokens
-- `WEBHOOK_SECRET`: Secret for webhook verification
-- `WEBHOOK_URL`: External webhook endpoint
-
-## Architecture
-
-- **Frontend**: Next.js 15 with TypeScript
-- **Backend**: Express.js server with WebSocket support
-- **Database**: PostgreSQL with Prisma ORM
-- **Real-time**: Socket.io for WebSocket connections (local only)
-
-## Default Credentials
-
-The application will create default users on first run. Check the logs for details.
-
-## Stopping the Application
-
+Type:
 ```bash
-docker-compose down
+console.log("Socket Connected:", window.socket?.connected);
 ```
+If you see true, WebSocket is connected successfully.
+<img width="1919" height="950" alt="image" src="https://github.com/user-attachments/assets/61ec7433-7f87-4ec9-b2a3-e3cb684f9e96" />
 
-To remove all data:
-```bash
-docker-compose down -v
-```
 
-## Features
+# Example Webhook Logs
+   <img width="250" height="132" alt="image" src="https://github.com/user-attachments/assets/ba5efec4-09d4-4c67-acc5-1f73f5f24055" />
+   
+   <img width="226" height="136" alt="image" src="https://github.com/user-attachments/assets/3f876381-459b-4107-8094-99691d7f6022" />
 
-- ✅ **Local Development**: Full functionality with WebSocket
-- ✅ **Play with Docker**: Core functionality (WebSocket may not work)
-- ✅ **Auto Environment Detection**: Adapts to different environments
-- ✅ **Graceful Degradation**: Works without WebSocket if needed
+
+# Postman Collection
+1.POST /api/auth/register
+   Body (JSON)
+   {
+     "username": "admin",
+     "password": "admin",
+     "role": "admin"
+   }
+
+2.POST /api/auth/login
+   Body (JSON)
+   {
+     "username": "admin",
+     "password": "admin"
+   }
+
+3.GET /api/users – Admin only. Requires logging in via API to obtain a token and using Bearer authentication.
+
+4.GET /api/issues/iss – Admin only. Requires logging in via API to obtain a token and using Bearer authentication.
