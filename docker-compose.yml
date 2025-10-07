@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ittracker_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ittracker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456789
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ittracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Next.js Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ittracker_web
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:123456789@postgres:5432/ittracker?sslmode=disable
+      - JWT_SECRET=Bananakub
+      - WEBHOOK_SECRET=your_webhook_secret_here_change_in_production
+      - WEBHOOK_URL=https://webhook.site/a8ace9c6-6c4a-47b0-97dd-248cd27469f0
+      - NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for database to be ready...' &&
+        until nc -z postgres 5432; do
+          echo 'Waiting for postgres...'
+          sleep 2
+        done &&
+        echo 'Database is ready!' &&
+        sleep 3 &&
+        echo 'Running Prisma commands...' &&
+        npx prisma generate &&
+        npx prisma db push --accept-data-loss &&
+        echo 'Starting server...' &&
+        node server.js
+      "
+volumes:
+  postgres_data:

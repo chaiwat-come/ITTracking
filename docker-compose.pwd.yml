@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ittracker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456789
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://postgres:123456789@postgres:5432/ittracker?sslmode=disable
+      - JWT_SECRET=Bananakub
+      - WEBHOOK_SECRET=your_webhook_secret_here
+      - WEBHOOK_URL=https://webhook.site/a8ace9c6-6c4a-47b0-97dd-248cd27469f0
+      - NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    command: >
+      sh -c "
+        echo 'Starting in PWD mode...' &&
+        until nc -z postgres 5432; do sleep 2; done &&
+        npx prisma generate &&
+        npx prisma db push --accept-data-loss &&
+        node server.js
+      "
