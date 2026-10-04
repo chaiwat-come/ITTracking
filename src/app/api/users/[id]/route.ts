@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserFromRequest } from "@/lib/jwt";
+import { isDemoMode, isDemoUsername } from "@/lib/demo";
 import bcrypt from "bcryptjs";
 
 // Update user (Admin only)
@@ -15,6 +16,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const userId = parseInt(id);
     if (isNaN(userId)) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    // Keep the live demo usable: visitors can't edit the seeded demo accounts
+    if (isDemoMode()) {
+      const target = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true }
+      });
+      if (target && isDemoUsername(target.username)) {
+        return NextResponse.json({ error: "Demo accounts can't be changed in the live demo" }, { status: 403 });
+      }
     }
 
     const { username, password, role } = await req.json();
@@ -95,6 +107,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     if (!existingUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (isDemoMode() && isDemoUsername(existingUser.username)) {
+      return NextResponse.json({ error: "Demo accounts can't be deleted in the live demo" }, { status: 403 });
     }
 
     await prisma.user.delete({

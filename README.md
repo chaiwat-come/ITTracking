@@ -96,6 +96,16 @@ node scripts/seed-admin.js
 npm run dev
 ```
 
+### Live demo mode
+
+Set `DEMO_MODE=true` to run the app as a public demo: the sign-in page gets one-click
+**admin / support / user** buttons, the database is reset to sample data on every start,
+and the seeded demo accounts can't be edited or deleted.
+
+`render.yaml` deploys it on Render's free plan (Render dashboard → **New → Blueprint** → this repo).
+When Render asks for `DATABASE_URL`, paste a PostgreSQL connection string – for example from a
+free [Neon](https://neon.com) database. Render generates `JWT_SECRET` and `ADMIN_PASSWORD`.
+
 ## API overview
 
 All protected routes expect `Authorization: Bearer <token>`.
@@ -173,10 +183,13 @@ WEBHOOK_SECRET=<same secret as .env> node webhook-test-server.js     # listens o
 
 ```text
 ├── server.js                  # custom Node server: Next.js + Socket.IO (JWT handshake, rooms)
+├── render.yaml                # Render Blueprint for the hosted live demo
 ├── prisma/schema.prisma       # User and Issue models
 ├── scripts/
+│   ├── start.sh               # container start-up: schema sync, seeding, server
 │   ├── init-env.sh            # creates .env with random secrets
 │   ├── seed-admin.js          # creates the first admin on startup
+│   ├── seed-demo.js           # demo mode: resets the database to sample data
 │   └── create-users.sh|.ps1   # demo support/user accounts through the API
 ├── src/app/api/               # REST API routes (auth, issues, users, notifications, webhook test)
 ├── src/components/            # IssueForm, IssueList, NotificationBell, WebSocketProvider

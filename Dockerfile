@@ -38,5 +38,5 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Start the application
-CMD ["node", "server.js"]
+# Sync the database schema, seed accounts, then start the server (see scripts/start.sh)
+CMD ["sh", "scripts/start.sh"]

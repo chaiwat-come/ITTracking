@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 
@@ -8,6 +8,15 @@ export default function LoginPage() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [demoRoles, setDemoRoles] = useState<string[]>([]);
+
+  // Show the one-click demo buttons when the server runs in demo mode (DEMO_MODE=true)
+  useEffect(() => {
+    fetch("/api/auth/demo")
+      .then((res) => res.json())
+      .then((data) => setDemoRoles(data.enabled ? data.roles : []))
+      .catch(() => setDemoRoles([]));
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -60,6 +69,32 @@ export default function LoginPage() {
     }
   };
 
+  const handleDemoLogin = async (role: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Demo sign-in failed");
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("username", data.user.username);
+      router.push("/dashboard");
+    } catch (err) {
+      setLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err instanceof Error ? err.message : "Demo sign-in failed",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-300 dark:from-gray-900 dark:to-gray-800 p-6">
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8">
@@ -72,6 +107,27 @@ export default function LoginPage() {
             Sign in to manage your work
           </p>
         </div>
+
+        {/* Live demo shortcuts */}
+        {demoRoles.length > 0 && (
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">
+            <p className="font-semibold">Live demo</p>
+            <p className="mt-1">Sign in instantly with a demo account. Demo data resets automatically.</p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {demoRoles.map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => handleDemoLogin(role)}
+                  disabled={loading}
+                  className="rounded-md bg-blue-600 px-2 py-1.5 text-xs font-semibold capitalize text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Form */}
         <form className="space-y-5" onSubmit={handleSubmit}>

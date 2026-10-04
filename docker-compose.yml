@@ -31,6 +31,7 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set - run scripts/init-env.sh}
       - WEBHOOK_URL=${WEBHOOK_URL:-}
       - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
+      - DEMO_MODE=${DEMO_MODE:-false}
       - NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
       - PORT=3000
       - HOSTNAME=0.0.0.0
@@ -40,22 +41,6 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    command: >
-      sh -c "
-        echo 'Waiting for database to be ready...' &&
-        until nc -z postgres 5432; do
-          echo 'Waiting for postgres...'
-          sleep 2
-        done &&
-        echo 'Database is ready!' &&
-        sleep 3 &&
-        echo 'Running Prisma commands...' &&
-        npx prisma generate &&
-        npx prisma db push --accept-data-loss &&
-        echo 'Seeding initial admin...' &&
-        node scripts/seed-admin.js &&
-        echo 'Starting server...' &&
-        node server.js
-      "
+    # Start-up (schema sync, seeding, server) is the image's CMD: scripts/start.sh
 volumes:
   postgres_data:

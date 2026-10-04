@@ -1,0 +1,25 @@
+# Render Blueprint for the hosted live demo: Render dashboard -> New -> Blueprint -> pick this repo.
+# When asked for DATABASE_URL, paste a PostgreSQL connection string (e.g. a free Neon database).
+services:
+  - type: web
+    name: ittracking-demo
+    runtime: docker
+    plan: free
+    region: singapore
+    autoDeployTrigger: commit
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: HOSTNAME
+        value: 0.0.0.0

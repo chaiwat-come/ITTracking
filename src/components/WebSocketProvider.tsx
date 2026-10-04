@@ -121,26 +121,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     isConnecting.current = true;
 
     const connectSocket = () => {
-      // ตรวจสอบ environment และเลือก URL ที่เหมาะสม
-      let socketUrl: string;
-      
-      if (typeof window !== 'undefined') {
-        // ตรวจสอบว่าเป็น PWD หรือไม่
-        const isPWD = window.location.hostname.includes('play-with-docker') || 
-                     window.location.hostname.includes('pwd') ||
-                     window.location.hostname.includes('labs.play-with-docker');
-        
-        if (isPWD) {
-          // ใช้ relative path สำหรับ PWD
-          socketUrl = window.location.origin;
-        } else {
-          // ใช้ localhost สำหรับ development
-          socketUrl = 'http://localhost:3000';
-        }
-      } else {
-        socketUrl = 'http://localhost:3000';
-      }
-      
+      // Socket.IO runs on the same server as the app, so connect back to the page's own origin
+      // (works on localhost, Play with Docker and the hosted demo alike)
+      const socketUrl = window.location.origin;
       const newSocket = io(socketUrl, {
         auth: { token },
         transports: ['websocket', 'polling'], // websocket ก่อน polling
