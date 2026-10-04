@@ -4,6 +4,9 @@ A real-time IT ticketing system built with **Next.js 15**, **Socket.IO**, **Pris
 Admins, support staff and end users each get their own permissions, updates arrive live over WebSockets,
 and issue events can be pushed to other systems through HMAC-signed webhooks. Runs locally with one `docker compose up`.
 
+**🔗 Live demo: [ittracking-demo.onrender.com](https://ittracking-demo.onrender.com)** – sign in with one click as admin, support or user.  
+<sub>Free hosting: the first visit may take about a minute while the server wakes up. Demo data resets automatically.</sub>
+
 ![Admin dashboard](docs/screenshots/dashboard-admin.png)
 
 ## Features
