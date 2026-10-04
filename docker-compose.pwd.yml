@@ -4,17 +4,17 @@ services:
     environment:
       POSTGRES_DB: ittracker
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123456789
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set - run scripts/init-env.sh}
 
   web:
     build: .
     environment:
-      - DATABASE_URL=postgresql://postgres:123456789@postgres:5432/ittracker?sslmode=disable
-      - JWT_SECRET=Bananakub
-      - WEBHOOK_SECRET=your_webhook_secret_here
-      - WEBHOOK_URL=https://webhook.site/a8ace9c6-6c4a-47b0-97dd-248cd27469f0
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/ittracker?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is not set - run scripts/init-env.sh}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is not set - run scripts/init-env.sh}
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
       - NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
     ports:
       - "3000:3000"
@@ -26,5 +26,6 @@ services:
         until nc -z postgres 5432; do sleep 2; done &&
         npx prisma generate &&
         npx prisma db push --accept-data-loss &&
+        node scripts/seed-admin.js &&
         node server.js
       "

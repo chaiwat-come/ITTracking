@@ -1,105 +1,185 @@
-# IT Tracker Application
+# IT Issue Tracker
 
-A Next.js application with WebSocket support for real-time issue tracking.
+A real-time IT ticketing system built with **Next.js 15**, **Socket.IO**, **Prisma** and **PostgreSQL**.
+Admins, support staff and end users each get their own permissions, updates arrive live over WebSockets,
+and issue events can be pushed to other systems through HMAC-signed webhooks. Runs locally with one `docker compose up`.
 
-## Prerequisites
+![Admin dashboard](docs/screenshots/dashboard-admin.png)
 
-- Docker
-- Docker Compose
+## Features
 
-## Quick Start
+- **JWT authentication** – bcrypt-hashed passwords, HS256 tokens that expire after 24 h
+- **Role-based access control** – three roles (`admin`, `support`, `user`), checked in every API route
+- **Issue workflow** – create and prioritise issues (Low → Critical), assign them to support staff, and move them through `New → In Progress → Resolved`
+- **Real-time notifications** – a Socket.IO server that verifies the JWT during the handshake and pushes events to per-user and per-role rooms
+- **Signed webhooks** – optional outgoing webhooks on issue events, signed with HMAC-SHA256 and a timestamp to block replays
+- **One-command setup** – Docker Compose starts PostgreSQL and the app, applies the Prisma schema and creates the first admin
 
-### Local Development
+## Screenshots
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/chaiwatkang007/ittackerv1.git
-   cd ittackerv1
-   ```
+| Sign-in | A regular user only sees their own issues |
+|---|---|
+| ![Sign-in page](docs/screenshots/login.png) | ![User view](docs/screenshots/dashboard-user.png) |
 
-2. **Run the application:**
-   ```bash
-   docker-compose up --build
-   ```
+## Roles & permissions
 
-3. **Wait for the build to complete** (this may take 5-10 minutes on first run)
+| Action | `user` | `support` | `admin` |
+|---|:---:|:---:|:---:|
+| Sign up from the web app | ✅ (always as `user`) | – | – |
+| Create issues | ✅ | ✅ | ✅ |
+| See issues | own | assigned to them + unassigned | all |
+| Update issue status / details | own | assigned to them + unassigned | all |
+| Assign issues to support staff | – | ✅ | ✅ |
+| List users | – | admin & support accounts | all |
+| Create, edit and delete users / assign roles | – | – | ✅ |
+| Send notifications via `/api/notifications` | – | ✅ | ✅ |
 
-4. **Access the application:**
-   - Web App: http://localhost:3000
-   - Database: port 5432
+## Tech stack
 
-### Play with Docker (PWD)
+Next.js 15 (App Router) · React · TypeScript · Ant Design · Tailwind CSS · Socket.IO · Prisma ORM · PostgreSQL 15 · jsonwebtoken · bcryptjs · Docker Compose
 
-1. **Go to [Play with Docker](https://labs.play-with-docker.com/)**
+## Architecture
 
-2. **Start a new session** Add New Instance
-   <img width="1919" height="952" alt="image" src="https://github.com/user-attachments/assets/f914b372-9daf-49c3-8b68-548f2b6fc6de" />
-
-
-4. git clone https://github.com/chaiwatkang007/ittackerv1.git
-   <img width="671" height="196" alt="image" src="https://github.com/user-attachments/assets/4be2cbed-b7aa-428b-ade6-bf65aee7a52e" />
-   
-   cd ittackerv1
-
-6. **Run Docker compose:**
-   ```bash
-   docker-compose up --build
-   ```
-
-7. **Access the application** using the provided URL
-   <img width="1599" height="952" alt="image" src="https://github.com/user-attachments/assets/53df0a9e-4e3d-4043-a12b-998880c9cf54" />
-   click port 3000
-   <img width="1919" height="945" alt="image" src="https://github.com/user-attachments/assets/b14dce0d-2ce9-49c4-8ffa-ad5201a2904b" />
-
-
-# How to Register
-1.if Sing up on Web application role = user   
-2.create via /api/auth/register can fix role user support admin
-# Login
-Login via Web App with username & password
-
-Login via API
-POST /api/auth/login
-{
-  "username": "admin",
-  "password": "admin"
-}
-
-# 📡 WebSocket Connection Test
-Login to the web app
-
-Press F12 → open Console
-
-Type:
-```bash
-console.log("Socket Connected:", window.socket?.connected);
+```text
+ Browser (Next.js UI) ──HTTP──▶  server.js  (custom Node server)
+        ▲                          ├─ Next.js API routes  /api/*  ──Prisma──▶  PostgreSQL
+        │                          └─ Socket.IO  (JWT handshake, user_<id> / role_<role> rooms)
+        └──────── WebSocket ◀──────┘
+                                   API routes ──HMAC-signed POST──▶ WEBHOOK_URL (optional)
 ```
-If you see true, WebSocket is connected successfully.
-<img width="1919" height="950" alt="image" src="https://github.com/user-attachments/assets/61ec7433-7f87-4ec9-b2a3-e3cb684f9e96" />
 
+## Getting started
 
-# Example Webhook Logs
-   <img width="250" height="132" alt="image" src="https://github.com/user-attachments/assets/ba5efec4-09d4-4c67-acc5-1f73f5f24055" />
-   
-   <img width="226" height="136" alt="image" src="https://github.com/user-attachments/assets/3f876381-459b-4107-8094-99691d7f6022" />
+**Requirements:** Docker with Docker Compose, and `bash` (on Windows, Git Bash works).
 
+```bash
+git clone https://github.com/chaiwat-come/ITTracking.git
+cd ITTracking
 
-# Postman Collection
-1.POST /api/auth/register
-   Body (JSON)
-   {
-     "username": "admin",
-     "password": "admin",
-     "role": "admin"
-   }
+# 1. Create .env with random secrets (database password, JWT secret, admin password)
+bash scripts/init-env.sh
 
-2.POST /api/auth/login
-   Body (JSON)
-   {
-     "username": "admin",
-     "password": "admin"
-   }
+# 2. Build and start PostgreSQL + the app (the first build takes a few minutes)
+docker compose up --build
+```
 
-3.GET /api/users – Admin only. Requires logging in via API to obtain a token and using Bearer authentication.
+Open **http://localhost:3000** and sign in as `admin` with the `ADMIN_PASSWORD` printed in step 1 (it is also stored in `.env`).
 
-4.GET /api/issues/iss – Admin only. Requires logging in via API to obtain a token and using Bearer authentication.
+To open a SQL shell on the database: `docker exec -it ittracker_postgres psql -U postgres -d ittracker`
+
+Optional – create demo `support01`, `support02` and `user` accounts (password = `DEMO_PASSWORD` in `.env`):
+
+```bash
+bash scripts/create-users.sh            # or, in PowerShell: .\scripts\create-users.ps1
+```
+
+### Play with Docker
+
+1. Open [Play with Docker](https://labs.play-with-docker.com/) and click **Add New Instance**
+2. Run:
+   ```bash
+   git clone https://github.com/chaiwat-come/ITTracking.git && cd ITTracking
+   bash scripts/init-env.sh
+   docker compose -f docker-compose.pwd.yml up --build
+   ```
+3. Click the **3000** badge at the top of the page to open the app
+
+### Running without Docker
+
+Needs Node.js 20.6+ and a running PostgreSQL.
+
+```bash
+bash scripts/init-env.sh        # then point DATABASE_URL in .env at your database
+npm install
+npx prisma db push
+node scripts/seed-admin.js
+npm run dev
+```
+
+## API overview
+
+All protected routes expect `Authorization: Bearer <token>`.
+
+| Method | Endpoint | Who | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | anyone (creates a `user`) · admin token to assign `support`/`admin` | Create an account |
+| `POST` | `/api/auth/login` | anyone | Returns a JWT |
+| `GET` | `/api/issues/iss` | signed in | List issues, scoped by role. Filters: `status`, `category`, `priority`, `assignedTo`, `search` |
+| `POST` | `/api/issues/iss` | signed in | Create an issue |
+| `GET` / `PATCH` | `/api/issues/:id` | signed in (role rules apply) | Get or update an issue |
+| `GET` | `/api/users` | admin, support | List users |
+| `POST` | `/api/users` | admin | Create a user with a role |
+| `PUT` / `DELETE` | `/api/users/:id` | admin | Update or delete a user |
+| `GET` / `POST` | `/api/notifications` | signed in / admin, support | WebSocket status / send a notification |
+| `POST` | `/api/webhook/test` | `X-Signature` header | Verify a signed webhook (for testing) |
+
+```bash
+# Log in as admin and keep the token
+TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"<ADMIN_PASSWORD>"}' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+# Create a support account - without the admin token this returns 403
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"username":"support01","password":"<password>","role":"support"}'
+
+# Create an issue
+curl -X POST http://localhost:3000/api/issues/iss \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"title":"Printer offline","description":"3rd-floor printer is not responding","priority":"High"}'
+```
+
+## Real-time events
+
+| Event | Sent to | When |
+|---|---|---|
+| `connected` | the connecting user | the JWT handshake succeeded |
+| `issue_created` | `admin` and `support` role rooms | a new issue is created |
+| `issue_updated` | the user who created the issue | someone else changes its status |
+
+To check the connection, sign in, open the browser console and run `window.socket?.connected` – it should print `true`.
+
+## Webhooks
+
+Outgoing webhooks are **off by default**. Set both `WEBHOOK_URL` and `WEBHOOK_SECRET` in `.env` to turn them on.
+The app sends `issue.created` and `issue.updated` (status changes) with this body:
+
+```json
+{ "event": "issue.updated", "issue_id": 12, "new_status": "Resolved", "updated_by": "support01" }
+```
+
+Each request carries `X-Signature: t=<unix-timestamp>,hmac=<hex>`, where the HMAC is
+`HMAC_SHA256(WEBHOOK_SECRET, "<timestamp>.<raw body>")`. A receiver should recompute it, compare in constant time
+and reject timestamps older than 5 minutes.
+
+To try it locally, run the bundled receiver and point the app at it:
+
+```bash
+WEBHOOK_SECRET=<same secret as .env> node webhook-test-server.js     # listens on :4000/webhook
+# in .env:  WEBHOOK_URL=http://host.docker.internal:4000/webhook
+```
+
+## Security notes
+
+- Passwords are hashed with bcrypt; JWTs are signed with HS256 (algorithm pinned) and expire after 24 h
+- Secrets only come from the environment (`.env` is git-ignored); the server refuses to start without `JWT_SECRET`
+- Public sign-up can only create `user` accounts – only an admin can grant `support` or `admin`
+- Every API route checks the caller's role, and issue listing is scoped per role (search cannot widen it)
+- Webhooks are signed with HMAC-SHA256 plus a timestamp, and are disabled unless explicitly configured
+- PostgreSQL is not published to the host – only the app container can reach it (so it also never clashes with a local PostgreSQL)
+
+## Project structure
+
+```text
+├── server.js                  # custom Node server: Next.js + Socket.IO (JWT handshake, rooms)
+├── prisma/schema.prisma       # User and Issue models
+├── scripts/
+│   ├── init-env.sh            # creates .env with random secrets
+│   ├── seed-admin.js          # creates the first admin on startup
+│   └── create-users.sh|.ps1   # demo support/user accounts through the API
+├── src/app/api/               # REST API routes (auth, issues, users, notifications, webhook test)
+├── src/components/            # IssueForm, IssueList, NotificationBell, WebSocketProvider
+├── src/lib/                   # jwt, webhook (HMAC), Prisma client
+└── webhook-test-server.js     # local receiver that verifies webhook signatures
+```

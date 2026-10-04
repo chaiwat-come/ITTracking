@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'your_webhook_secret_here_change_in_production';
-const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://webhook.site/a8ace9c6-6c4a-47b0-97dd-248cd27469f0';
+// Outgoing webhooks are opt-in: nothing is sent unless both WEBHOOK_URL and WEBHOOK_SECRET are set
+const getWebhookUrl = () => process.env.WEBHOOK_URL || '';
+const getWebhookSecret = () => process.env.WEBHOOK_SECRET || '';
 
 export interface WebhookPayload {
   event: string;
@@ -12,23 +13,27 @@ export interface WebhookPayload {
 
 export function generateHMACSignature(payload: string, timestamp: number): string {
   const data = `${timestamp}.${payload}`;
-  const signature = crypto.createHmac('sha256', WEBHOOK_SECRET).update(data).digest('hex');
+  const signature = crypto.createHmac('sha256', getWebhookSecret()).update(data).digest('hex');
   return `t=${timestamp},hmac=${signature}`;
 }
 
 export async function sendWebhook(payload: WebhookPayload): Promise<void> {
-  try {
-    // Skip webhook if URL is not properly configured
-    if (!WEBHOOK_URL) {
+  const webhookUrl = getWebhookUrl();
+  if (!webhookUrl) {
     // webhook disabled
-      return;
-    }
+    return;
+  }
+  if (!getWebhookSecret()) {
+    console.warn('WEBHOOK_URL is set but WEBHOOK_SECRET is missing - skipping unsigned webhook');
+    return;
+  }
 
+  try {
     const timestamp = Math.floor(Date.now() / 1000);
     const payloadString = JSON.stringify(payload);
     const signature = generateHMACSignature(payloadString, timestamp);
 
-    const response = await fetch(WEBHOOK_URL, {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -38,9 +43,7 @@ export async function sendWebhook(payload: WebhookPayload): Promise<void> {
     });
 
     if (!response.ok) {
-    // webhook failed
-    } else {
-    // webhook sent successfully
+      console.warn(`Webhook responded with HTTP ${response.status}`);
     }
   } catch (error) {
     console.error('Webhook error:', error);
@@ -49,6 +52,8 @@ export async function sendWebhook(payload: WebhookPayload): Promise<void> {
 }
 
 export function verifyWebhookSignature(payload: string, signature: string): boolean {
+  if (!getWebhookSecret()) return false;
+
   try {
     const parts = signature.split(',');
     const timestampPart = parts.find(part => part.startsWith('t='));

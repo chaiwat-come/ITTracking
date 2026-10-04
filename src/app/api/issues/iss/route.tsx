@@ -10,9 +10,14 @@ interface IssueData {
   priority?: string;
 }
 
+type OrCondition =
+  | { assignedTo: string | null }
+  | { title: { contains: string; mode: 'insensitive' } }
+  | { description: { contains: string; mode: 'insensitive' } };
+
 interface WhereClause {
   createdBy?: string;
-  OR?: Array<{ assignedTo: string | null } | { title: { contains: string; mode: 'insensitive' } } | { description: { contains: string; mode: 'insensitive' } }>;
+  AND?: Array<{ OR: OrCondition[] }>;
   status?: string;
   category?: string;
   priority?: string;
@@ -100,6 +105,8 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
 
     const whereClause: WhereClause = {};
+    // OR-groups are AND-ed together, so a search can never widen the role-based scope
+    const orGroups: Array<{ OR: OrCondition[] }> = [];
 
     // Role-based filtering
     if (user.role === 'user') {
@@ -107,10 +114,12 @@ export async function GET(req: NextRequest) {
       whereClause.createdBy = user.username;
     } else if (user.role === 'support') {
       // Support users see issues assigned to them or unassigned issues
-      whereClause.OR = [
-        { assignedTo: user.username },
-        { assignedTo: null }
-      ];
+      orGroups.push({
+        OR: [
+          { assignedTo: user.username },
+          { assignedTo: null }
+        ]
+      });
     }
     // Admin sees all issues (no additional filtering)
 
@@ -122,10 +131,16 @@ export async function GET(req: NextRequest) {
 
     // Search functionality
     if (search) {
-      whereClause.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
+      orGroups.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ]
+      });
+    }
+
+    if (orGroups.length > 0) {
+      whereClause.AND = orGroups;
     }
 
     const issues = await prisma.issue.findMany({

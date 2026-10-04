@@ -1,22 +1,25 @@
-const express = require('express');
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const { loadEnvConfig } = require('@next/env');
 
 const dev = process.env.NODE_ENV !== 'production';
+// โหลด .env แบบเดียวกับ Next.js ก่อนอ่านค่า env ใด ๆ (ใน Docker ค่ามาจาก docker-compose อยู่แล้ว)
+loadEnvConfig(process.cwd(), dev);
 const hostname = process.env.HOSTNAME || '0.0.0.0';  // เปลี่ยนเป็น 0.0.0.0 สำหรับ Docker
 const port = process.env.PORT || 3000;
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-// ใช้ JWT_SECRET จาก environment variable
-const JWT_SECRET = process.env.JWT_SECRET || 'Bananakub';
-
-// Debug: Check JWT_SECRET
-console.log('🔐 Server JWT_SECRET:', JWT_SECRET ? 'Set' : 'Not set');
+// ใช้ JWT_SECRET จาก environment variable เท่านั้น - ห้าม fallback เป็นค่าที่ hardcode ไว้
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('❌ JWT_SECRET is not set (run scripts/init-env.sh or copy env.example to .env)');
+  process.exit(1);
+}
 
 // Store connected users
 const connectedUsers = new Map();
@@ -50,7 +53,7 @@ app.prepare().then(() => {
         return next(new Error('Authentication error: No token provided'));
       }
 
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
       socket.userId = decoded.userId;
       socket.username = decoded.username;
       socket.role = decoded.role;

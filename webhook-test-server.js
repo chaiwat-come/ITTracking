@@ -1,7 +1,11 @@
 const http = require('http');
 const crypto = require('crypto');
 
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'your_webhook_secret_here_change_in_production';
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+if (!WEBHOOK_SECRET) {
+  console.error('❌ WEBHOOK_SECRET is not set - use the same value as the app (.env)');
+  process.exit(1);
+}
 const PORT = process.env.PORT || 4000;
 
 // Function to verify HMAC signature

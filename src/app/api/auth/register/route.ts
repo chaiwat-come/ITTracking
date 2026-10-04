@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
-import { generateToken } from "@/lib/jwt";
+import { generateToken, getUserFromRequest } from "@/lib/jwt";
+
+const ROLES = ["admin", "support", "user"];
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +16,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Public sign-up always creates a regular user.
+    // Only an authenticated admin (Bearer token) may assign the support/admin roles.
+    let userRole = "user";
+    if (role && role !== "user") {
+      const requester = getUserFromRequest(req);
+      if (!requester || requester.role !== "admin") {
+        return NextResponse.json(
+          { error: "Only an admin can assign the support or admin role" },
+          { status: 403 }
+        );
+      }
+      if (!ROLES.includes(role)) {
+        return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+      }
+      userRole = role;
+    }
+
     // Check if username exists
     const existingUser = await prisma.user.findUnique({
       where: { username }
@@ -24,7 +43,6 @@ export async function POST(req: NextRequest) {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const userRole = ["admin", "support", "user"].includes(role) ? role : "user";
 
     const user = await prisma.user.create({
       data: {

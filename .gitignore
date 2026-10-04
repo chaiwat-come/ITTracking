@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# environment files (secrets) - keep only the template
+.env
+.env.*
+!env.example
+
+# logs & misc
+npm-debug.log*
+*.log
+*.tsbuildinfo
+.DS_Store
