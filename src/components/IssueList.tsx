@@ -12,7 +12,8 @@ import {
   Form, 
   message,
   Tooltip,
-  Badge
+  Badge,
+  Grid
 } from 'antd';
 import { 
   EyeOutlined, 
@@ -25,6 +26,7 @@ import type { ColumnsType } from 'antd/es/table';
 
 const { Option } = Select;
 const { Search } = Input;
+const { useBreakpoint } = Grid;
 
 interface User {
   id: number;
@@ -50,6 +52,9 @@ interface IssueListProps {
 }
 
 export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
+  // On phones (< md) the table collapses to title + actions, with priority/status shown under the title
+  const screens = useBreakpoint();
+  const isMobile = screens.md === false;
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -182,17 +187,26 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
       dataIndex: 'id',
       key: 'id',
       width: 80,
+      responsive: ['sm'],
       sorter: (a, b) => a.id - b.id,
     },
     {
       title: 'Title',
       dataIndex: 'title',
       key: 'title',
-      ellipsis: true,
-      render: (text) => (
-        <Tooltip title={text}>
-          <span>{text}</span>
-        </Tooltip>
+      ellipsis: !isMobile,
+      render: (text, record) => (
+        <>
+          <Tooltip title={text}>
+            <span>{text}</span>
+          </Tooltip>
+          {isMobile && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              <Tag color={getPriorityColor(record.priority)}>{record.priority}</Tag>
+              <Tag color={getStatusColor(record.status)}>{record.status}</Tag>
+            </div>
+          )}
+        </>
       ),
     },
     {
@@ -200,6 +214,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
       dataIndex: 'category',
       key: 'category',
       width: 120,
+      responsive: ['lg'],
       filters: [
         { text: 'Network', value: 'Network' },
         { text: 'Hardware', value: 'Hardware' },
@@ -216,6 +231,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
       dataIndex: 'priority',
       key: 'priority',
       width: 100,
+      responsive: ['md'],
       render: (priority) => (
         <Tag color={getPriorityColor(priority)}>{priority}</Tag>
       ),
@@ -229,6 +245,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
       dataIndex: 'status',
       key: 'status',
       width: 120,
+      responsive: ['md'],
       render: (status) => (
         <Badge 
           status={status === 'Resolved' ? 'success' : status === 'In Progress' ? 'processing' : 'default'}
@@ -246,6 +263,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
       title: 'Created By',
       key: 'createdBy',
       width: 120,
+      responsive: ['lg'],
       render: (_, record) => (
         <div className="flex items-center gap-1">
           <UserOutlined />
@@ -257,6 +275,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
       title: 'Assigned To',
       key: 'assignedTo',
       width: 120,
+      responsive: ['lg'],
       render: (_, record) => (
         record.assignedTo ? (
           <div className="flex items-center gap-1">
@@ -273,6 +292,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 120,
+      responsive: ['lg'],
       render: (date) => (
         <div className="flex items-center gap-1">
           <ClockCircleOutlined />
@@ -284,7 +304,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 120,
+      width: isMobile ? 96 : 120,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -327,14 +347,14 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
         <Search
           placeholder="Search issues..."
           allowClear
-          style={{ width: 250 }}
+          style={{ width: isMobile ? '100%' : 250 }}
           onSearch={(value) => setFilters(prev => ({ ...prev, search: value }))}
         />
         
         <Select
           placeholder="Status"
           allowClear
-          style={{ width: 120 }}
+          style={{ width: isMobile ? 'calc(50% - 8px)' : 120 }}
           onChange={(value) => setFilters(prev => ({ ...prev, status: value || '' }))}
         >
           <Option value="New">New</Option>
@@ -345,7 +365,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
         <Select
           placeholder="Priority"
           allowClear
-          style={{ width: 120 }}
+          style={{ width: isMobile ? 'calc(50% - 8px)' : 120 }}
           onChange={(value) => setFilters(prev => ({ ...prev, priority: value || '' }))}
         >
           <Option value="Low">Low</Option>
@@ -357,7 +377,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
         <Select
           placeholder="Category"
           allowClear
-          style={{ width: 120 }}
+          style={{ width: isMobile ? 'calc(50% - 8px)' : 120 }}
           onChange={(value) => setFilters(prev => ({ ...prev, category: value || '' }))}
         >
           <Option value="Network">Network</Option>
@@ -373,7 +393,7 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
           <Select
             placeholder="Assigned To"
             allowClear
-            style={{ width: 150 }}
+            style={{ width: isMobile ? 'calc(50% - 8px)' : 150 }}
             onChange={(value) => setFilters(prev => ({ ...prev, assignedTo: value || '' }))}
           >
             {users.map(user => (
@@ -393,13 +413,14 @@ export const IssueList: React.FC<IssueListProps> = ({ userRole }) => {
         dataSource={issues}
         rowKey="id"
         loading={loading}
+        size={isMobile ? 'small' : undefined}
         pagination={{
           pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
+          showSizeChanger: !isMobile,
+          showQuickJumper: !isMobile,
           showTotal: (total) => `Total ${total} issues`,
         }}
-        scroll={{ x: 1200 }}
+        scroll={screens.lg ? { x: 1200 } : undefined}
       />
 
       {/* View Issue Modal */}

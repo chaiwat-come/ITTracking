@@ -48,6 +48,7 @@ import {
     Divider,
     Progress,
     Tooltip,
+    Grid,
 } from "antd";
 import { WebSocketProvider } from "@/components/WebSocketProvider";
 import { IssueForm } from "@/components/IssueForm";
@@ -56,6 +57,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
+const { useBreakpoint } = Grid;
 
 interface User {
     id: number;
@@ -88,6 +90,9 @@ interface Settings {
 export default function Dashboard() {
     const [user, setUser] = useState<User | null>(null);
     const [collapsed, setCollapsed] = useState(false);
+    // Phones / small tablets (< md): the sidebar becomes an overlay that starts hidden
+    const screens = useBreakpoint();
+    const isMobile = screens.md === false;
     const [currentPage, setCurrentPage] = useState("issues"); // Default to issues for all users
     const [issueFormVisible, setIssueFormVisible] = useState(false);
     const [stats, setStats] = useState<DashboardStats>({
@@ -440,7 +445,7 @@ export default function Dashboard() {
                                     Here&apos;s what&apos;s happening with your IT support system today.
                                 </p>
                             </div>
-                            <Space>
+                            <Space wrap>
                                 <Button
                                     icon={<ReloadOutlined />}
                                     onClick={loadStats}
@@ -632,8 +637,8 @@ export default function Dashboard() {
             case "issues":
                 return (
                     <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <Title level={2}>
+                        <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+                            <Title level={2} className="!mb-0">
                                 {user?.role === 'admin' ? 'All Issues' : 'Issues'}
                             </Title>
                             <Button
@@ -742,7 +747,7 @@ export default function Dashboard() {
                                     Manage system users and their permissions.
                                 </p>
                             </div>
-                            <Space>
+                            <Space wrap>
                                 <Button
                                     icon={<ReloadOutlined />}
                                     onClick={loadUsers}
@@ -770,10 +775,12 @@ export default function Dashboard() {
                                 dataSource={users}
                                 loading={usersLoading}
                                 rowKey="id"
+                                size={isMobile ? 'small' : undefined}
+                                scroll={{ x: 'max-content' }}
                                 pagination={{
                                     pageSize: 10,
-                                    showSizeChanger: true,
-                                    showQuickJumper: true,
+                                    showSizeChanger: !isMobile,
+                                    showQuickJumper: !isMobile,
                                     showTotal: (total, range) =>
                                         `${range[0]}-${range[1]} of ${total} users`,
                                 }}
@@ -925,14 +932,19 @@ export default function Dashboard() {
 
     return (
         <WebSocketProvider>
-            <Layout className="h-screen overflow-hidden">
-                <Sider 
-                    trigger={null} 
-                    collapsible 
-                    collapsed={collapsed} 
-                    theme="dark" 
+            <Layout className="h-dvh overflow-hidden">
+                <Sider
+                    trigger={null}
+                    collapsible
+                    collapsed={collapsed}
+                    breakpoint="md"
+                    collapsedWidth={isMobile ? 0 : 80}
+                    onBreakpoint={(broken) => setCollapsed(broken)}
+                    theme="dark"
                     className="shadow-lg h-full"
-                    style={{ height: '100vh' }}
+                    style={isMobile
+                        ? { height: '100dvh', position: 'fixed', left: 0, top: 0, zIndex: 1000 }
+                        : { height: '100dvh' }}
                 >
                     <div className="h-16 flex items-center justify-center m-4">
                         {!collapsed ? (
@@ -947,12 +959,22 @@ export default function Dashboard() {
                         theme="dark"
                         mode="inline"
                         selectedKeys={[currentPage]}
-                        onClick={(e) => setCurrentPage(e.key)}
+                        onClick={(e) => {
+                            setCurrentPage(e.key);
+                            if (isMobile) setCollapsed(true);
+                        }}
                         items={getMenuItems()}
                         className="border-r-0 h-full"
-                        style={{ height: 'calc(100vh - 80px)', overflowY: 'auto' }}
+                        style={{ height: 'calc(100dvh - 80px)', overflowY: 'auto' }}
                     />
                 </Sider>
+                {isMobile && !collapsed && (
+                    <div
+                        className="fixed inset-0 bg-black/40"
+                        style={{ zIndex: 999 }}
+                        onClick={() => setCollapsed(true)}
+                    />
+                )}
                 <Layout className="h-full">
                     <Header 
                         className="flex justify-between items-center px-4 shadow-sm" 
@@ -960,14 +982,14 @@ export default function Dashboard() {
                             background: colorBgContainer,
                             height: 64,
                             lineHeight: 'normal',
-                            padding: '0 24px'
+                            padding: isMobile ? '0 8px' : '0 24px'
                         }}
                     >
                         <Button
                             type="text"
                             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                             onClick={() => setCollapsed(!collapsed)}
-                            style={{ fontSize: "16px", width: 64, height: 64 }}
+                            style={{ fontSize: "16px", width: isMobile ? 48 : 64, height: 64 }}
                         />
                         <div className="flex items-center gap-4">
                             <NotificationBell />
@@ -1000,11 +1022,13 @@ export default function Dashboard() {
                             >
                                 <Space className="cursor-pointer">
                                     <Avatar icon={<UserOutlined />} />
-                                    <span className="font-medium">{user.username}</span>
-                                    <Badge
-                                        count={user.role.toUpperCase()}
-                                        style={{ backgroundColor: user.role === 'admin' ? '#52c41a' : user.role === 'support' ? '#1890ff' : '#722ed1' }}
-                                    />
+                                    {!isMobile && <span className="font-medium">{user.username}</span>}
+                                    {!isMobile && (
+                                        <Badge
+                                            count={user.role.toUpperCase()}
+                                            style={{ backgroundColor: user.role === 'admin' ? '#52c41a' : user.role === 'support' ? '#1890ff' : '#722ed1' }}
+                                        />
+                                    )}
                                 </Space>
                             </Dropdown>
                         </div>
@@ -1013,12 +1037,12 @@ export default function Dashboard() {
                         className="overflow-auto"
                         style={{
                             margin: 0,
-                            padding: '24px',
-                            height: 'calc(100vh - 64px)',
+                            padding: isMobile ? '16px 12px' : '24px',
+                            height: 'calc(100dvh - 64px)',
                             background: colorBgContainer,
                         }}
                     >
-                        <div style={{ minHeight: 'calc(100vh - 112px)' }}>
+                        <div style={{ minHeight: 'calc(100dvh - 112px)' }}>
                             {renderContent()}
                         </div>
                     </Content>
